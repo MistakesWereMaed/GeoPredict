@@ -26,8 +26,9 @@ Key Features:
 
 ### Datasets Used:
 
-1. **GeoText**: A dataset containing over 350,000 geotagged tweets.
-2. **GeoNames US Gazetteer**: Metadata for geographic locations, used to enhance prediction accuracy.
+1. **GeoText**: A dataset containing over 350,000 geotagged tweets. - downloaded from https://www.cs.cmu.edu/~ark/GeoText/
+2. **GeoNames US Gazetteer**: Metadata for geographic locations, used to enhance prediction accuracy. - downloaded from https://download.geonames.org/export/dump/
+3. **EPA PFAS Data**: PFAS Contaminant information, used for analysis - downloaded from https://www.epa.gov/dwucmr/occurrence-data-unregulated-contaminant-monitoring-rule
 
 ### Data Processing Pipeline:
 

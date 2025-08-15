@@ -1,10 +1,9 @@
 import pandas as pd
-from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split
 
 
 
-PATH_DATA = '../Data/Processed/data.csv'
+PATH_DATA = '../Data/Processed/merged.csv'
 
 PATH_TRAIN = '../Data/Training/train.csv'
 PATH_TEST = '../Data/Training/test.csv'
@@ -12,12 +11,8 @@ PATH_DEV = '../Data/Training/dev.csv'
 
 
 def main():
-    CLUSTERS = 4
-    kmeans = KMeans(n_clusters=CLUSTERS, random_state=0)
     df = pd.read_csv(PATH_DATA)
 
-    df['cluster'] = kmeans.fit_predict(df[['longitude', 'latitude']])
-    df = df[['index', 'hour', 'weekday', 'cluster', 'latitude', 'longitude', 'text']]
     print(f"Number of samples: {len(df)}")
 
     train, temp = train_test_split(df, test_size=0.1, random_state=42)

@@ -7,10 +7,11 @@ from tqdm import tqdm
 
 
 PATH_DATA = '../Data/Processed/data.csv'
-
 PATH_GEONAMES = '../Data/Unprocessed/GeoNames/US.txt'
+
 PATH_GAZETTEER = '../Data/Processed/gazetteer.csv'
 PATH_METADATA = '../Data/Processed/metadata.csv'
+PATH_MERGED = '../Data/Processed/merged.csv'
 
 
 
@@ -160,6 +161,9 @@ def main():
 
     df_metadata = generate_metadata(temp_df, PATH_GAZETTEER)
     df_metadata.to_csv(PATH_METADATA, index=False, encoding='utf-8')
+
+    merged = pd.merge(df, df_metadata, on=['index'], how='left')
+    merged.to_csv(PATH_MERGED, index=False, encoding='utf-8')
 
 if __name__ == "__main__":
     main()

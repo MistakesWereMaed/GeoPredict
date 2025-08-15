@@ -1,60 +1,11 @@
 import pandas as pd
 import numpy as np
-import cudf
 import torch
 import faiss
 
-from tqdm import tqdm
 from transformers import BertTokenizer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
-
-def join_gpu(group):
-    combined_row = {}
-    
-    for col in group.columns:
-        if group[col].dtype == 'object':
-            unique_values = group[col].dropna().unique().to_arrow().to_pylist()
-            combined_row[col] = ', '.join(map(str, unique_values))
-        elif cudf.api.types.is_numeric_dtype(group[col]):
-            if col in {'latitude', 'longitude'}:
-                combined_row[col] = group[col].mean()
-            elif col in 'index':
-                combined_row[col] = group[col].iloc[0]
-            else:
-                combined_row[col] = group[col].sum()
-                
-    return combined_row
-
-def join_cpu(group):
-    combined_row = {}
-    
-    for col in group.columns:
-        if group[col].dtype == 'object':
-            unique_values = group[col].dropna().unique()
-            combined_row[col] = ', '.join(map(str, unique_values))
-        elif pd.api.types.is_numeric_dtype(group[col]):
-            if col in {'latitude', 'longitude'}:
-                combined_row[col] = group[col].mean()
-            elif col in 'index':
-                combined_row[col] = group[col].iloc[0]
-            else:
-                combined_row[col] = group[col].sum()
-    
-    return combined_row
-
-def join_rows(df, col, use_gpu=True):
-    grouped = df.groupby(col)
-    combined_rows = []
-
-    if use_gpu:
-        for _, group in tqdm(grouped, desc="Processing Groups", total=len(grouped)):
-            combined_rows.append(join_gpu(group))
-        return cudf.DataFrame(combined_rows)
-    
-    for _, group in grouped:
-        combined_rows.append(join_cpu(group))
-    return pd.DataFrame(combined_rows)
 
 def encode_df(df):
     df = df.copy()

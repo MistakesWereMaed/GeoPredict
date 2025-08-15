@@ -1,18 +1,6 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-def get_stats(df):
-    cluster_stats = df.groupby('cluster').agg({
-        'latitude': ['mean', 'median', 'std'],
-        'longitude': ['mean', 'median', 'std'],
-        'cluster': ['count']
-    })
-
-    cluster_stats.columns = ['_'.join(col) for col in cluster_stats.columns]
-    cluster_stats = cluster_stats.reset_index()
-
-    return cluster_stats
-
 def show_clusters(ax, df):
     scatter = ax.scatter(df['longitude'], df['latitude'], c=df['cluster'], cmap='tab20', s=10)
     num_clusters = len(df['cluster'].unique())

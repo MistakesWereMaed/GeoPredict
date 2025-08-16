@@ -2,7 +2,11 @@ import torch
 import pytorch_lightning as pl
 
 from torch import nn
-from transformers import BertModel
+from transformers import AutoModel
+
+METADATA_DIM = 6
+
+
 
 def weighted_mae(y_true, y_pred, num_preds):
     coords = y_pred[:, :, :2]
@@ -26,13 +30,16 @@ def weighted_mae(y_true, y_pred, num_preds):
     return loss.mean()
 
 class MultitaskBERTModel(pl.LightningModule):
-    def __init__(self, metadata_dim=6, num_preds=5, hidden_dim=256, lr=1e-5):
+    def transfer_batch_to_device(self, batch, device, dataloader_idx=0):
+        return batch
+    
+    def __init__(self, num_preds=5, hidden_dim=256, lr=1e-5):
         super().__init__()
         self.save_hyperparameters()
 
-        self.bert = BertModel.from_pretrained('bert-base-cased')
+        self.bert = AutoModel.from_pretrained("answerdotai/ModernBERT-base")
         self.metadata_encoder = nn.Sequential(
-            nn.Linear(metadata_dim, hidden_dim),
+            nn.Linear(METADATA_DIM, hidden_dim),
             nn.ReLU(),
             nn.Linear(hidden_dim, hidden_dim),
             nn.ReLU()
@@ -46,8 +53,9 @@ class MultitaskBERTModel(pl.LightningModule):
 
     def forward(self, kf_input, kf_mask, metadata):
         num_preds = self.hparams.num_preds
-        kf_embeddings = self.bert(input_ids=kf_input, attention_mask=kf_mask).pooler_output
-        metadata_embeddings = self.metadata_encoder(metadata.float())
+        outputs = self.bert(input_ids=kf_input, attention_mask=kf_mask)
+        kf_embeddings = outputs.last_hidden_state[:, 0]
+        metadata_embeddings = self.metadata_encoder(metadata)
 
         fused_features = torch.cat([kf_embeddings, metadata_embeddings], dim=1)
         fused_output = self.fusion_layer(fused_features)

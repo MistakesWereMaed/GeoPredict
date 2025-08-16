@@ -3,7 +3,7 @@ import numpy as np
 import torch
 import faiss
 
-from transformers import BertTokenizer
+from transformers import AutoTokenizer
 from sklearn.preprocessing import LabelEncoder
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import DataLoader
@@ -30,7 +30,7 @@ def split_features(df, labeled=True):
     return df_key, df_meta, df_y
 
 def tokenize(text, length=200):
-    tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
+    tokenizer = AutoTokenizer.from_pretrained("answerdotai/ModernBERT-base")
 
     tokens = tokenizer(
         text,
@@ -47,11 +47,11 @@ def tokenize(text, length=200):
     }
 
 class GeolocationDataset(torch.utils.data.Dataset):
-    def __init__(self, input_ids, attention_mask, metadata, targets):
-        self.input_ids = input_ids
-        self.attention_mask = attention_mask
-        self.metadata = metadata
-        self.targets = targets
+    def __init__(self, input_ids, attention_mask, metadata, targets, device):
+        self.input_ids = input_ids.to(device, non_blocking=True)
+        self.attention_mask = attention_mask.to(device, non_blocking=True)
+        self.metadata = metadata.to(device, non_blocking=True)
+        self.targets = torch.as_tensor(targets, device=device)
 
     def __len__(self):
         return len(self.input_ids)
@@ -64,12 +64,7 @@ class GeolocationDataset(torch.utils.data.Dataset):
             'targets': self.targets[idx]
         }
     
-def impute_metadata(dataset, n_neighbors=5):
-    # Extract tensors from the dataset
-    input_ids = dataset.input_ids
-    attention_mask = dataset.attention_mask
-    metadata = torch.tensor(dataset.metadata, dtype=torch.float32)
-    targets = torch.tensor(dataset.targets, dtype=torch.float64)
+def impute_metadata(input_ids, attention_mask, metadata, targets, n_neighbors=5):
     # Combine all features into a single tensor for KNN processing
     full_features = torch.cat([input_ids, attention_mask, metadata, targets], dim=1)
     # Convert to NumPy for FAISS processing
@@ -81,7 +76,7 @@ def impute_metadata(dataset, n_neighbors=5):
     # If there are no missing metadata rows, return the original dataset
     if not missing_mask.any():
         print("No missing metadata found. Skipping imputation.")
-        return dataset
+        return metadata
     # Split the dataset into rows with complete and missing metadata
     complete_data = full_features_np[non_missing_mask]
     incomplete_data = full_features_np[missing_mask]
@@ -104,16 +99,9 @@ def impute_metadata(dataset, n_neighbors=5):
     # Reconstruct the metadata tensor
     metadata = torch.tensor(metadata_np, dtype=torch.float32)
     # Return a new dataset with updated metadata
-    return GeolocationDataset(
-        input_ids=input_ids,
-        attention_mask=attention_mask,
-        metadata=metadata,
-        targets=targets
-    )
+    return metadata
 
 def load_data(path, batch_size, labeled=True, shuffle=True):
-    print("Loading data...")
-
     df = pd.read_csv(path)
     df_key, df_metadata, df_y = split_features(df, labeled=labeled)
 
@@ -121,14 +109,19 @@ def load_data(path, batch_size, labeled=True, shuffle=True):
     df_metadata = encode_df(df_metadata)
     df_metadata = scale_df(df_metadata)
 
+    targets = torch.tensor(df_y.to_numpy(), dtype=torch.float32)
+    metadata = torch.tensor(df_metadata, dtype=torch.float32)
+    metadata = impute_metadata(tokens['input_ids'], tokens['attention_mask'], metadata, targets)
+
+    device = torch.device("cuda", torch.cuda.current_device() if torch.cuda.is_available() else "cpu")
     dataset = GeolocationDataset(
         input_ids = tokens['input_ids'],
         attention_mask = tokens['attention_mask'],
-        metadata = df_metadata,
-        targets = df_y.to_numpy()
+        metadata = metadata,
+        targets = targets,
+        device = device
     )
 
-    dataset = impute_metadata(dataset)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=shuffle)
 
     return loader

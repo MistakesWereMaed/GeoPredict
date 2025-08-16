@@ -30,9 +30,6 @@ def weighted_mae(y_true, y_pred, num_preds):
     return loss.mean()
 
 class MultitaskBERTModel(pl.LightningModule):
-    def transfer_batch_to_device(self, batch, device, dataloader_idx=0):
-        return batch
-    
     def __init__(self, num_preds=5, hidden_dim=256, lr=1e-5):
         super().__init__()
         self.save_hyperparameters()

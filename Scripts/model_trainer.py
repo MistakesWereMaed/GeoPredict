@@ -19,7 +19,7 @@ def main():
     logger = WandbLogger(project="GeoPredict")
 
     checkpoint_cb = ModelCheckpoint(monitor="val_loss", save_top_k=1, mode="min")
-    early_stop_cb = EarlyStopping(monitor="val_loss", patience=5, mode="min")
+    early_stop_cb = EarlyStopping(monitor="val_loss", patience=3, mode="min")
 
     model = MultitaskBERTModel(
         num_preds=NUM_PREDS,
@@ -28,7 +28,7 @@ def main():
     )
 
     trainer = Trainer(
-        max_epochs=5,
+        max_epochs=15,
         accelerator="auto",
         devices="auto",
         precision="16-mixed",

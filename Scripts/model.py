@@ -4,6 +4,8 @@ import pytorch_lightning as pl
 from torch import nn
 from transformers import AutoModel
 
+from metrics import get_best_point
+
 METADATA_DIM = 6
 
 
@@ -75,6 +77,18 @@ class MultitaskBERTModel(pl.LightningModule):
         loss = weighted_mae(batch['targets'], predictions, self.hparams.num_preds)
         self.log("val_loss", loss, prog_bar=True, on_step=False, on_epoch=True)
         return loss
+    
+    def predict_step(self, batch, batch_idx):
+        text_input, text_mask = batch['input_ids'], batch['attention_mask']
+        metadata, targets = batch['metadata'], batch['targets']
+
+        predictions = self(text_input, text_mask, metadata)
+        predictions = get_best_point(predictions.cpu().numpy())
+        
+        return {
+            "predictions": predictions,
+            "targets": targets.cpu().numpy(),
+        }
 
     def configure_optimizers(self):
         return torch.optim.AdamW(self.parameters(), lr=self.hparams.lr)
